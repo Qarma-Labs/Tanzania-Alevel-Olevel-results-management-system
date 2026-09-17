@@ -65,6 +65,10 @@ abstract class BaseController extends Controller
         $this->currentUserUuid = $this->resolveCurrentUserUuid();
         $this->currentSchoolId = $this->resolveCurrentSchoolUuid();
         $this->currentUserRole = $this->resolveCurrentUserRole();
+
+        // Global error reporting (no-op unless Honeybadger is installed,
+        // HONEYBADGER_API_KEY is set, and ENVIRONMENT is production).
+        \App\Libraries\ErrorReporter::boot();
     }
 
     protected function resolveCurrentUserUuid(): ?string

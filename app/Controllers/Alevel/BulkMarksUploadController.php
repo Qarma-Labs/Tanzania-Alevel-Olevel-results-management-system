@@ -231,8 +231,23 @@ class BulkMarksUploadController extends BaseController
             $validSubjectIds = array_column($validSubjects, 'id');
             $subjectNameMap = array_column($validSubjects, 'subject_name', 'id');
 
-            // Read the uploaded Excel file
+            // Hardening for known PhpSpreadsheet parser advisories (DoS/SSRF):
+            // bound file size and sheet dimensions before parsing, and read
+            // cached values only so embedded formulas are never evaluated.
+            if ($file->getSize() > 5 * 1024 * 1024) {
+                throw new \Exception('File too large. Maximum allowed size is 5 MB.');
+            }
+
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $reader->setReadDataOnly(true);
+
+            foreach ($reader->listWorksheetInfo($file->getTempName()) as $sheetInfo) {
+                if (($sheetInfo['totalRows'] ?? 0) > 10000 || ($sheetInfo['totalColumns'] ?? 0) > 200) {
+                    throw new \Exception('Worksheet dimensions exceed the allowed limit.');
+                }
+            }
+
+            // Read the uploaded Excel file
             $spreadsheet = $reader->load($file->getTempName());
             $sheet = $spreadsheet->getActiveSheet();
             $data = $sheet->toArray();
