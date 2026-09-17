@@ -53,9 +53,11 @@ $routes->group("", [], function ($routes) {
 });
 
 // =============================================================================
-// Protected Routes (Require Authentication)
+// Protected Routes (Require Authentication + known RBAC role)
+// Outer guard allows admin, head_of_school and teacher. Sensitive routes add a
+// stricter `role:admin,head_of_school` filter on top (both must pass).
 // =============================================================================
-$routes->group("", ["filter" => "auth"], function ($routes) {
+$routes->group("", ["filter" => ["auth", "role:admin,head_of_school,teacher"]], function ($routes) {
     // -----------------------------------------------------------------------------
     // Dashboard
     // -----------------------------------------------------------------------------
@@ -86,7 +88,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         $routes->post("store-bulk", "StudentManagementController::storeBulk");
         $routes->post("update/(:segment)", "StudentManagementController::update/$1");
         $routes->get("getStudents", "StudentManagementController::getStudents");
-        $routes->post("delete/(:segment)", "StudentManagementController::delete/$1");
+        $routes->post("delete/(:segment)", "StudentManagementController::delete/$1", ["filter" => "role:admin,head_of_school"]);
     });
 
     // -----------------------------------------------------------------------------
@@ -94,39 +96,39 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
     // -----------------------------------------------------------------------------
     $routes->group("classes", ["namespace" => "App\Controllers"], function ($routes) {
         $routes->get("/", "ClassManagementController::index");
-        $routes->get("create", "ClassManagementController::create");
-        $routes->get("edit/(:segment)", "ClassManagementController::edit/$1");
-        $routes->post("store", "ClassManagementController::store");
-        $routes->post("update/(:segment)", "ClassManagementController::update/$1");
+        $routes->get("create", "ClassManagementController::create", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("edit/(:segment)", "ClassManagementController::edit/$1", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("store", "ClassManagementController::store", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("update/(:segment)", "ClassManagementController::update/$1", ["filter" => "role:admin,head_of_school"]);
         $routes->get("getClasses", "ClassManagementController::getClasses");
-        $routes->post("delete/(:segment)", "ClassManagementController::delete/$1");
-        $routes->delete("delete/(:segment)", "ClassManagementController::delete/$1");
-        
+        $routes->post("delete/(:segment)", "ClassManagementController::delete/$1", ["filter" => "role:admin,head_of_school"]);
+        $routes->delete("delete/(:segment)", "ClassManagementController::delete/$1", ["filter" => "role:admin,head_of_school"]);
+
         $routes->get("sections", "ClassManagementController::sections");
-        $routes->get("sections/create", "ClassManagementController::createSection");
-        $routes->get("sections/edit/(:segment)", "ClassManagementController::editSection/$1");
-        $routes->post("sections/store", "ClassManagementController::storeSection");
-        $routes->post("sections/update/(:segment)", "ClassManagementController::updateSection/$1");
+        $routes->get("sections/create", "ClassManagementController::createSection", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("sections/edit/(:segment)", "ClassManagementController::editSection/$1", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("sections/store", "ClassManagementController::storeSection", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("sections/update/(:segment)", "ClassManagementController::updateSection/$1", ["filter" => "role:admin,head_of_school"]);
         $routes->get("getSections", "ClassManagementController::getSections");
-        $routes->post("sections/delete/(:segment)", "ClassManagementController::deleteSection/$1");
-        
+        $routes->post("sections/delete/(:segment)", "ClassManagementController::deleteSection/$1", ["filter" => "role:admin,head_of_school"]);
+
         $routes->get("allocations", "ClassManagementController::allocations");
-        $routes->get("allocations/create", "ClassManagementController::createAllocation");
-        $routes->get("allocations/edit/(:segment)", "ClassManagementController::editAllocation/$1");
-        $routes->post("allocations/store", "ClassManagementController::storeAllocation");
-        $routes->post("allocations/update/(:segment)", "ClassManagementController::updateAllocation/$1");
+        $routes->get("allocations/create", "ClassManagementController::createAllocation", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("allocations/edit/(:segment)", "ClassManagementController::editAllocation/$1", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("allocations/store", "ClassManagementController::storeAllocation", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("allocations/update/(:segment)", "ClassManagementController::updateAllocation/$1", ["filter" => "role:admin,head_of_school"]);
         $routes->get("getAllocations", "ClassManagementController::getAllocations");
-        $routes->post("allocations/delete/(:segment)", "ClassManagementController::deleteAllocation/$1");
+        $routes->post("allocations/delete/(:segment)", "ClassManagementController::deleteAllocation/$1", ["filter" => "role:admin,head_of_school"]);
     });
 
     // -----------------------------------------------------------------------------
     // Exams (O-Level and General)
     // -----------------------------------------------------------------------------
     $routes->group("exam", function ($routes) {
-        // Exam Creation
+        // Exam Creation (admin / head of school only)
         $routes->get("/", "AddExamController::index");
         $routes->get("getSessions", "AddExamController::getSessions");
-        $routes->post("store", "AddExamController::store");
+        $routes->post("store", "AddExamController::store", ["filter" => "role:admin,head_of_school"]);
 
         // Exam Subjects
         $routes->get("subjects", "AddExamSubjectController::index");
@@ -134,10 +136,12 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         $routes->post(
             "subjects/store-batch",
             "AddExamSubjectController::storeBatch",
+            ["filter" => "role:admin,head_of_school"],
         );
         $routes->post(
             "subjects/update/(:segment)",
             'AddExamSubjectController::update/$1',
+            ["filter" => "role:admin,head_of_school"],
         );
         $routes->get(
             "subjects/list/(:segment)",
@@ -146,6 +150,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         $routes->post(
             "subjects/delete/(:segment)",
             'AddExamSubjectController::delete/$1',
+            ["filter" => "role:admin,head_of_school"],
         );
 
         // Exam Allocations
@@ -158,10 +163,11 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
             "allocation/list/(:segment)",
             'AllocationController::getAllocations/$1',
         );
-        $routes->post("allocation/store", "AllocationController::store");
+        $routes->post("allocation/store", "AllocationController::store", ["filter" => "role:admin,head_of_school"]);
         $routes->post(
             "allocation/delete/(:segment)/(:segment)",
             'AllocationController::deallocate/$1/$2',
+            ["filter" => "role:admin,head_of_school"],
         );
 
         // Exam Marks (Individual)
@@ -216,6 +222,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         $routes->post(
             "marks/view/delete/(:segment)",
             'ViewExamMarksController::delete/$1',
+            ["filter" => "role:admin,head_of_school"],
         );
         $routes->post(
             "marks/view/updateAll",
@@ -224,14 +231,15 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         $routes->post(
             "marks/view/deleteAll",
             "ViewExamMarksController::deleteAll",
+            ["filter" => "role:admin,head_of_school"],
         );
 
         // View Exams
         $routes->get("view", "ViewExamController::index");
         $routes->get("view/getSessions", "ViewExamController::getSessions");
         $routes->get("view/getExams", "ViewExamController::getExams");
-        $routes->post("view/update/(:segment)", 'ViewExamController::update/$1');
-        $routes->post("view/delete/(:segment)", 'ViewExamController::delete/$1');
+        $routes->post("view/update/(:segment)", 'ViewExamController::update/$1', ["filter" => "role:admin,head_of_school"]);
+        $routes->post("view/delete/(:segment)", 'ViewExamController::delete/$1', ["filter" => "role:admin,head_of_school"]);
     });
 
     // -----------------------------------------------------------------------------
@@ -240,11 +248,12 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
     $routes->group("results", ["namespace" => "App\Controllers"], function (
         $routes,
     ) {
-        // Result Grading and Publishing
-        $routes->get("publish", "ResultGradingController::showPublishPage");
+        // Result Grading and Publishing (admin / head of school only)
+        $routes->get("publish", "ResultGradingController::showPublishPage", ["filter" => "role:admin,head_of_school"]);
         $routes->post(
             "process-grades",
             "ResultGradingController::processGradeCalculation",
+            ["filter" => "role:admin,head_of_school"],
         );
         $routes->get(
             "fetch-class-results",
@@ -293,37 +302,43 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         "alevel",
         ["namespace" => "App\Controllers\Alevel"],
         function ($routes) {
-            // Combinations
+            // Combinations (admin / head of school only for writes)
             $routes->get("combinations", "AddAlevelController::index");
-            $routes->post("combinations/store", "AddAlevelController::store");
+            $routes->post("combinations/store", "AddAlevelController::store", ["filter" => "role:admin,head_of_school"]);
             $routes->get(
                 "combinations/edit/(:segment)",
                 'AddAlevelController::edit/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->post(
                 "combinations/update/(:segment)",
                 'AddAlevelController::update/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->post(
                 "combinations/delete/(:segment)",
                 'AddAlevelController::delete/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
 
             // Subjects
             $routes->get("subjects", "AlevelSubjectsController::index");
             $routes->get("subjects/view", "AlevelSubjectsController::view");
-            $routes->post("subjects/store", "AlevelSubjectsController::store");
+            $routes->post("subjects/store", "AlevelSubjectsController::store", ["filter" => "role:admin,head_of_school"]);
             $routes->get(
                 "subjects/edit/(:segment)",
                 'AlevelSubjectsController::edit/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->post(
                 "subjects/update/(:segment)",
                 'AlevelSubjectsController::update/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->post(
                 "subjects/delete/(:segment)",
                 'AlevelSubjectsController::delete/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
 
             // Combination Allocations
@@ -338,18 +353,22 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
             $routes->post(
                 "allocations/store",
                 "AllocationCombinationClasssController::store",
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->get(
                 "allocations/edit/(:segment)",
                 'AllocationCombinationClasssController::edit/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->post(
                 "allocations/update/(:segment)",
                 'AllocationCombinationClasssController::update/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->get(
                 "allocations/delete/(:segment)",
                 'AllocationCombinationClasssController::delete/$1',
+                ["filter" => "role:admin,head_of_school"],
             );
             $routes->get(
                 "allocations/get-sections",
@@ -403,7 +422,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
             $routes->get("marks/view", "ViewAlevelMarksController::index");
             $routes->post("marks/view", "ViewAlevelMarksController::index");
             $routes->post("marks/update", "ViewAlevelMarksController::update");
-            $routes->post("marks/delete", "ViewAlevelMarksController::delete");
+            $routes->post("marks/delete", "ViewAlevelMarksController::delete", ["filter" => "role:admin,head_of_school"]);
             $routes->get(
                 "marks/getExams/(:segment)",
                 'ViewAlevelMarksController::getExams/$1',
@@ -413,7 +432,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
                 'ViewAlevelMarksController::getClasses/$1',
             );
 
-            $routes->get("results/publish", "PublishAlevelResults::index");
+            $routes->get("results/publish", "PublishAlevelResults::index", ["filter" => "role:admin,head_of_school"]);
             $routes->get(
                 "results/getExams/(:segment)",
                 'PublishAlevelResults::getExams/$1',
@@ -429,6 +448,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
             $routes->get(
                 "results/calculate",
                 "PublishAlevelResults::calculateResults",
+                ["filter" => "role:admin,head_of_school"],
             );
 
             // Routes for viewing A-Level results
@@ -466,7 +486,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
         "alevel",
         ["namespace" => "App\Controllers\Alevel"],
         function ($routes) {
-            // Exam Allocations
+            // Exam Allocations (admin / head of school only for writes)
             $routes->get("allocate-exams", "AlllocateAlevelExam::index");
             $routes->get(
                 "allocate-exams/get-exams/(:segment)",
@@ -476,7 +496,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
                 "allocate-exams/get-classes/(:segment)",
                 'AlllocateAlevelExam::getClassesBySession/$1',
             );
-            $routes->post("allocate-exams/store", "AlllocateAlevelExam::store");
+            $routes->post("allocate-exams/store", "AlllocateAlevelExam::store", ["filter" => "role:admin,head_of_school"]);
 
             // View Exam Allocations
             $routes->get("view-exams", "ViewAlevelExams::index");
@@ -487,6 +507,7 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
             $routes->delete(
                 "view-exams/deallocate/(:segment)/(:segment)",
                 'ViewAlevelExams::deallocate/$1/$2',
+                ["filter" => "role:admin,head_of_school"],
             );
         },
     );
@@ -497,13 +518,13 @@ $routes->group("", ["filter" => "auth"], function ($routes) {
     $routes->group("settings", ["namespace" => "App\Controllers"], function (
         $routes,
     ) {
-        $routes->get("/", "SettingsController::index");
-        $routes->get("create", "SettingsController::create");
-        $routes->get("edit", "SettingsController::edit");
-        $routes->get("view", "SettingsController::view");
-        $routes->post("store", "SettingsController::store");
-        $routes->post("update", "SettingsController::update");
-        $routes->get("test", "SettingsController::test");
+        $routes->get("/", "SettingsController::index", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("create", "SettingsController::create", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("edit", "SettingsController::edit", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("view", "SettingsController::view", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("store", "SettingsController::store", ["filter" => "role:admin,head_of_school"]);
+        $routes->post("update", "SettingsController::update", ["filter" => "role:admin,head_of_school"]);
+        $routes->get("test", "SettingsController::test", ["filter" => "role:admin,head_of_school"]);
     });
 
     // -------------------------------------------------------------------------

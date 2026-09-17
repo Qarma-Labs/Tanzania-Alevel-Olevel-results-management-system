@@ -52,6 +52,71 @@ class UserModel extends Model
         return $data;
     }
 
+    /**
+     * Role names assigned via the user_user_roles pivot table.
+     *
+     * @return list<string>
+     */
+    public function getPivotRoleNames(string $userId): array
+    {
+        try {
+            $rows = $this->db->table('user_user_roles')
+                ->select('user_roles.name')
+                ->join('user_roles', 'user_roles.id = user_user_roles.user_role_id')
+                ->where('user_user_roles.user_id', $userId)
+                ->get()
+                ->getResultArray();
+        } catch (\Throwable $e) {
+            // Table may not exist yet on older installs; fall back to legacy column.
+            return [];
+        }
+
+        $names = [];
+        foreach ($rows as $row) {
+            if (isset($row['name']) && is_string($row['name'])) {
+                $names[] = $row['name'];
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Attach a pivot role to a user by role name (no-op when missing).
+     */
+    public function attachRoleByName(string $userId, string $roleName): bool
+    {
+        try {
+            $role = $this->db->table('user_roles')
+                ->where('name', $roleName)
+                ->get()
+                ->getRowArray();
+
+            if (! $role) {
+                return false;
+            }
+
+            $exists = $this->db->table('user_user_roles')
+                ->where('user_id', $userId)
+                ->where('user_role_id', $role['id'])
+                ->countAllResults();
+
+            if ($exists > 0) {
+                return true;
+            }
+
+            return (bool) $this->db->table('user_user_roles')->insert([
+                'id'           => $this->generateUuid(),
+                'user_id'      => $userId,
+                'user_role_id' => $role['id'],
+                'created_at'   => date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     protected function generateUuid(): string
     {
         $bytes = random_bytes(16);

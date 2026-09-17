@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\Authorization;
 use App\Models\UserModel;
 use App\Models\SettingsModel;
 
@@ -66,12 +67,20 @@ class AuthController extends BaseController
         $school = $this->settingsModel->getSchoolByUserId($user["id"]);
         $schoolId = $school ? $school['id'] : null;
 
+        // Merge pivot-table roles with the legacy users.role column so both
+        // RBAC sources stay in effect during the migration period.
+        $roles = Authorization::mergeRoles(
+            $this->users->getPivotRoleNames($user["id"]),
+            $user["role"] ?? null,
+        );
+
         $this->session->set([
             "user_id" => $user["id"],
             "user_uuid" => $user["id"],
             "email" => $user["email"],
             "username" => $user["username"],
-            "role" => $user["role"] ?? "user",
+            "role" => Authorization::primaryRole($roles),
+            "roles" => $roles,
             "school_id" => $schoolId,
             "isLoggedIn" => true,
         ]);
@@ -122,6 +131,15 @@ class AuthController extends BaseController
             "role" => $role,
             "active" => 1,
         ]);
+
+        // Keep the pivot table in sync so RoleGuard sees the new account.
+        $created = $this->users
+            ->where("email", $this->request->getPost("email"))
+            ->first();
+        if (is_array($created) && isset($created["id"])) {
+            $pivotRole = $role === "admin" ? "admin" : "teacher";
+            $this->users->attachRoleByName((string) $created["id"], $pivotRole);
+        }
 
         return redirect()
             ->to("/login")

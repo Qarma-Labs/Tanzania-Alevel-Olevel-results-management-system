@@ -57,10 +57,9 @@ abstract class BaseModel extends Model
 
     protected function applyOwnershipScope(array $data): array
     {
-        $role = $this->resolveCurrentUserRole();
         $schoolId = $this->resolveCurrentSchoolUuid();
 
-        if ($role === 'admin' || !$schoolId) {
+        if ($this->resolveCurrentUserIsAdmin() || !$schoolId) {
             return $data;
         }
 
@@ -136,14 +135,32 @@ abstract class BaseModel extends Model
 
     protected function resolveCurrentUserRole(): ?string
     {
+        $roles = $this->resolveCurrentUserRoles();
+
+        return $roles[0] ?? null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function resolveCurrentUserRoles(): array
+    {
         $session = service('session');
         if (! $session) {
-            return null;
+            return [];
         }
 
-        $role = $session->get('role');
+        $roles = $session->get('roles');
+        if (is_array($roles) && $roles !== []) {
+            return \App\Libraries\Authorization::normalizeRoles($roles);
+        }
 
-        return is_string($role) ? $role : null;
+        return \App\Libraries\Authorization::normalizeRoles($session->get('role'));
+    }
+
+    protected function resolveCurrentUserIsAdmin(): bool
+    {
+        return \App\Libraries\Authorization::isAdmin($this->resolveCurrentUserRoles());
     }
 
     protected function uuidFromValue(string $value): string

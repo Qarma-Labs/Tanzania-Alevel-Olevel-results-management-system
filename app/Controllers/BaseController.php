@@ -101,9 +101,44 @@ abstract class BaseController extends Controller
 
     protected function resolveCurrentUserRole(): ?string
     {
+        $roles = $this->session->get('roles');
+        if (is_array($roles) && $roles !== []) {
+            return \App\Libraries\Authorization::primaryRole($roles);
+        }
+
         $role = $this->session->get('role');
 
         return is_string($role) ? $role : null;
+    }
+
+    /**
+     * Current user's normalized roles (pivot + legacy column merged at login).
+     *
+     * @return list<string>
+     */
+    protected function getCurrentUserRoles(): array
+    {
+        $roles = $this->session->get('roles');
+        if (is_array($roles) && $roles !== []) {
+            return \App\Libraries\Authorization::normalizeRoles($roles);
+        }
+
+        return \App\Libraries\Authorization::normalizeRoles(
+            $this->session->get('role')
+        );
+    }
+
+    protected function hasRole(string|array $required): bool
+    {
+        return \App\Libraries\Authorization::hasRole(
+            $this->getCurrentUserRoles(),
+            $required
+        );
+    }
+
+    protected function isAdmin(): bool
+    {
+        return \App\Libraries\Authorization::isAdmin($this->getCurrentUserRoles());
     }
 
     protected function getCurrentUserUuid(): ?string
@@ -142,7 +177,7 @@ abstract class BaseController extends Controller
 
     protected function applySchoolScopeToBuilder(BaseBuilder $builder, ?string $tableAlias = null): BaseBuilder
     {
-        if ($this->currentUserRole === 'admin' || empty($this->currentSchoolId)) {
+        if ($this->isAdmin() || empty($this->currentSchoolId)) {
             return $builder;
         }
 
